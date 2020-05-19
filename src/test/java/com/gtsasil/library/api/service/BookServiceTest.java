@@ -1,9 +1,11 @@
 package com.gtsasil.library.api.service;
 
 
+import com.gtsasil.library.api.exception.BusinessException;
 import com.gtsasil.library.api.model.entity.Book;
 import com.gtsasil.library.api.model.repository.BookRepository;
 import com.gtsasil.library.api.service.impl.BookServiceImpl;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +35,7 @@ public class BookServiceTest {
     @DisplayName("Deve salvar um livro")
     public void saveBiooktest(){
         //cenário
-        Book book = Book.builder().isbn("123").author("fulano").title("As aventura").build();
+        Book book = createValidBook();
         Mockito.when(repository.save(book))
                 .thenReturn(
                         Book.builder()
@@ -48,10 +50,32 @@ public class BookServiceTest {
         Book savedBook = service.save(book);
         
         //verificação
-        
         assertThat(savedBook.getId()).isNotNull();
         assertThat(savedBook.getIsbn()).isEqualTo("123");
         assertThat(savedBook.getTitle()).isEqualTo("As aventuras");
         assertThat(savedBook.getAuthor()).isEqualTo("Fulano");
+    }
+
+    private Book createValidBook(){
+        return  Book.builder().isbn("123").author("fulano").title("As aventura").build();
+    }
+
+    @Test
+    @DisplayName("Deve lançar erro de nogocio ao tentar salvar um livro com isbn duplicado")
+    public void shouldNotSaveABookWithDuplicatedISBN(){
+
+        //cenario
+        Book book = createValidBook();
+        Mockito.when(repository.existsByIsbn(Mockito.anyString())).thenReturn(true);
+
+        //execução
+        Throwable exception = Assertions.catchThrowable(() -> service.save(book));
+
+        //verificação
+        assertThat(exception)
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Isbn já cadastrado.");
+
+        Mockito.verify(repository, Mockito.never()).save(book);
     }
 }
